@@ -1,0 +1,1333 @@
+<!doctype html>
+<html>
+  <head>
+    <meta charset="utf-8" />
+    <meta name="viewport" content="width=device-width, initial-scale=1" />
+    <title>GEOSLOPE Moisture Dashboard</title>
+    <style>
+      :root[data-theme="dark"] {
+        --bg-from: #080c1a;
+        --bg-to: #0b1020;
+        --panel: #121935;
+        --panel-hover: #1a2244;
+        --text: #e5e7eb;
+        --text-dim: #cbd5e1;
+        --muted: #94a3b8;
+        --border: #1f2a4a;
+        --brand: #60a5fa;
+        --brand-strong: #2563eb;
+        --good: #10b981;
+        --warn: #f59e0b;
+        --bad: #ef4444;
+        --code-bg: #0b1433;
+        --shadow: rgba(0,0,0,0.25);
+        --glow-1: rgba(96,165,250,0.08);
+        --glow-2: rgba(99,102,241,0.06);
+        --chart-grid: rgba(255,255,255,0.06);
+      }
+      
+      :root[data-theme="light"] {
+        --bg-from: #f8fafc;
+        --bg-to: #e2e8f0;
+        --panel: #ffffff;
+        --panel-hover: #f1f5f9;
+        --text: #0f172a;
+        --text-dim: #334155;
+        --muted: #64748b;
+        --border: #cbd5e1;
+        --brand: #3b82f6;
+        --brand-strong: #2563eb;
+        --good: #059669;
+        --warn: #d97706;
+        --bad: #dc2626;
+        --code-bg: #f1f5f9;
+        --shadow: rgba(0,0,0,0.1);
+        --glow-1: rgba(59,130,246,0.03);
+        --glow-2: rgba(99,102,241,0.02);
+        --chart-grid: rgba(0,0,0,0.08);
+      }
+      
+      * { box-sizing: border-box; }
+      html, body { height: 100%; margin: 0; }
+      body { 
+        font-family: 'Inter', system-ui, -apple-system, Segoe UI, Roboto, Arial, sans-serif; 
+        background: linear-gradient(180deg, var(--bg-from), var(--bg-to)); 
+        color: var(--text); 
+        transition: background 0.3s, color 0.3s;
+      }
+      /* Top bar */
+      .topbar {
+        position: sticky;
+        top: 0;
+        z-index: 100;
+        width: 100%;
+        background: linear-gradient(180deg, rgba(0,0,0,0.25), rgba(0,0,0,0.05)), var(--panel);
+        border-bottom: 1px solid var(--border);
+        backdrop-filter: blur(6px);
+      }
+      .topbar-inner {
+        display: flex;
+        align-items: center;
+        justify-content: space-between;
+        gap: 12px;
+        padding: 10px 16px;
+        max-width: none;
+        margin: 0;
+      }
+      .topbar-title {
+        display: flex;
+        align-items: center;
+        gap: 10px;
+        font-weight: 700;
+      }
+      .topbar-logo {
+        width: 28px;
+        height: 28px;
+        background: linear-gradient(135deg, var(--brand), var(--brand-strong));
+        border-radius: 8px;
+        display: inline-flex;
+        align-items: center;
+        justify-content: center;
+        color: white;
+      }
+      .topbar-actions { display: flex; align-items: center; gap: 10px; }
+      
+      .container { width: 100%; max-width: none; margin: 0; padding: 16px; }
+      
+      header { 
+        display: flex; 
+        align-items: center; 
+        justify-content: space-between; 
+        margin-bottom: 24px; 
+        flex-wrap: wrap;
+        gap: 16px;
+      }
+      
+      .header-left { display: flex; gap: 12px; align-items: center; }
+      .logo { 
+        width: 40px; 
+        height: 40px; 
+        background: linear-gradient(135deg, var(--brand), var(--brand-strong)); 
+        border-radius: 10px; 
+        display: flex; 
+        align-items: center; 
+        justify-content: center;
+        font-weight: 700;
+        color: white;
+        font-size: 18px;
+      }
+      
+      .title-group h1 { 
+        margin: 0; 
+        font-size: 24px; 
+        font-weight: 700; 
+        background: linear-gradient(135deg, var(--brand), var(--brand-strong));
+        -webkit-background-clip: text;
+        -webkit-text-fill-color: transparent;
+        background-clip: text;
+      }
+      
+      .subtitle { font-size: 13px; color: var(--muted); margin-top: 2px; }
+      
+      .header-right { display: flex; gap: 12px; align-items: center; }
+      
+      .theme-toggle {
+        background: var(--panel);
+        border: 1px solid var(--border);
+        border-radius: 24px;
+        padding: 6px;
+        display: flex;
+        gap: 4px;
+        cursor: pointer;
+        transition: all 0.3s;
+      }
+      
+      .theme-toggle:hover { background: var(--panel-hover); }
+      
+      .theme-btn {
+        padding: 6px 12px;
+        border-radius: 18px;
+        border: none;
+        background: transparent;
+        color: var(--muted);
+        cursor: pointer;
+        transition: all 0.3s;
+        font-size: 13px;
+        font-weight: 500;
+      }
+      
+      .theme-btn.active {
+        background: linear-gradient(135deg, var(--brand), var(--brand-strong));
+        color: white;
+      }
+      
+      .status-badge {
+        display: flex;
+        align-items: center;
+        gap: 6px;
+        background: var(--panel);
+        border: 1px solid var(--border);
+        border-radius: 20px;
+        padding: 6px 12px;
+        font-size: 13px;
+        color: var(--text-dim);
+      }
+      
+      .status-dot {
+        width: 8px;
+        height: 8px;
+        background: var(--good);
+        border-radius: 50%;
+        animation: pulse 2s infinite;
+      }
+      
+      @keyframes pulse {
+        0%, 100% { opacity: 1; }
+        50% { opacity: 0.5; }
+      }
+      
+      .grid { 
+        display: grid; 
+        grid-template-columns: 1fr; 
+        gap: 20px; 
+      }
+      
+      @media (min-width: 1000px) { 
+        .grid { grid-template-columns: 1.8fr 1fr; } 
+      }
+      
+      .grid-full {
+        grid-column: 1 / -1;
+      }
+
+      /* Two-column responsive wrapper for Map and 3D viewer */
+      .two-col {
+        display: grid;
+        grid-template-columns: 1fr;
+        gap: 20px;
+      }
+      @media (min-width: 1000px) {
+        .two-col { grid-template-columns: 1fr 1fr; }
+      }
+      
+      .card { 
+        background: radial-gradient(1200px 600px at -10% -40%, var(--glow-1), transparent 60%), 
+                    radial-gradient(1000px 600px at 120% -40%, var(--glow-2), transparent 60%), 
+                    var(--panel); 
+        border: 1px solid var(--border); 
+        border-radius: 16px; 
+        padding: 20px; 
+        box-shadow: 0 4px 24px var(--shadow);
+        transition: all 0.3s;
+      }
+      
+      .card:hover { box-shadow: 0 8px 32px var(--shadow); }
+      
+      h2 { 
+        margin: 0 0 16px 0; 
+        font-size: 18px; 
+        font-weight: 700; 
+        color: var(--text);
+      }
+      
+      .kpis { 
+        display: grid; 
+        grid-template-columns: repeat(2, 1fr); 
+        gap: 12px; 
+        margin-bottom: 20px; 
+      }
+      
+      @media (min-width: 700px) { 
+        .kpis { grid-template-columns: repeat(4, 1fr); } 
+      }
+      
+      .kpi { 
+        background: linear-gradient(135deg, var(--glow-1), transparent);
+        border: 1px solid var(--border); 
+        border-radius: 12px; 
+        padding: 16px; 
+        transition: all 0.3s;
+        position: relative;
+        overflow: hidden;
+      }
+      
+      .kpi::before {
+        content: '';
+        position: absolute;
+        top: 0;
+        left: 0;
+        width: 100%;
+        height: 2px;
+        background: linear-gradient(90deg, transparent, var(--brand), transparent);
+        opacity: 0;
+        transition: opacity 0.3s;
+      }
+      
+      .kpi:hover {
+        transform: translateY(-2px);
+        border-color: var(--brand);
+      }
+      
+      .kpi:hover::before { opacity: 1; }
+      
+      .kpi .label { 
+        font-size: 12px; 
+        color: var(--muted); 
+        text-transform: uppercase;
+        letter-spacing: 0.5px;
+        font-weight: 600;
+      }
+      
+      .kpi .value { 
+        margin-top: 8px; 
+        font-size: 28px; 
+        font-weight: 700; 
+      }
+      
+      .ok { color: var(--good); }
+      .warn { color: var(--warn); }
+      .bad { color: var(--bad); }
+      
+      .controls { 
+        display: flex; 
+        gap: 10px; 
+        flex-wrap: wrap; 
+        align-items: center; 
+        margin-bottom: 16px; 
+        padding: 12px;
+        background: linear-gradient(135deg, var(--glow-1), transparent);
+        border-radius: 12px;
+        border: 1px solid var(--border);
+      }
+      
+      .controls select, .controls input[type="checkbox"] { 
+        background: var(--panel); 
+        color: var(--text); 
+        border: 1px solid var(--border); 
+        border-radius: 8px; 
+        padding: 8px 12px; 
+        cursor: pointer;
+        transition: all 0.3s;
+      }
+      
+      .controls select:hover {
+        border-color: var(--brand);
+      }
+      
+      .controls input[type="checkbox"] {
+        width: 18px;
+        height: 18px;
+        padding: 0;
+        margin: 0 4px 0 0;
+      }
+      
+      .controls label {
+        display: flex;
+        align-items: center;
+        gap: 6px;
+        color: var(--muted);
+        font-size: 14px;
+        font-weight: 500;
+      }
+      
+      .controls button { 
+        background: linear-gradient(135deg, var(--brand), var(--brand-strong)); 
+        color: white; 
+        border: none; 
+        border-radius: 8px; 
+        padding: 8px 16px; 
+        cursor: pointer; 
+        font-weight: 600;
+        transition: all 0.3s;
+        font-size: 14px;
+      }
+      
+      .controls button:hover {
+        transform: translateY(-1px);
+        box-shadow: 0 4px 12px rgba(59,130,246,0.3);
+      }
+      
+      .controls button.secondary { 
+        background: var(--panel); 
+        border: 1px solid var(--border); 
+        color: var(--text-dim);
+      }
+      
+      .controls button.secondary:hover {
+        background: var(--panel-hover);
+        border-color: var(--brand);
+        box-shadow: none;
+      }
+      
+      canvas { 
+        width: 100% !important; 
+        height: 400px !important; 
+        border-radius: 8px;
+      }
+      
+      .footer { 
+        margin-top: 16px; 
+        display: flex; 
+        justify-content: space-between; 
+        align-items: center; 
+        padding-top: 16px;
+        border-top: 1px solid var(--border);
+        flex-wrap: wrap;
+        gap: 12px;
+      }
+      
+      .muted { color: var(--muted); font-size: 14px; }
+      
+      .legend { display: flex; gap: 16px; flex-wrap: wrap; }
+      .legend-item { display: flex; align-items: center; gap: 6px; }
+      .legend-dot { width: 10px; height: 10px; border-radius: 50%; }
+      
+      code { 
+        background: var(--code-bg); 
+        color: var(--brand); 
+        padding: 3px 8px; 
+        border: 1px solid var(--border); 
+        border-radius: 6px; 
+        font-size: 13px;
+        font-family: 'Fira Code', monospace;
+      }
+      
+      .detail-value {
+        font-size: 48px;
+        font-weight: 700;
+        margin: 16px 0;
+      }
+      
+      .detail-time {
+        color: var(--muted);
+        font-size: 14px;
+        margin-bottom: 20px;
+      }
+      
+      hr {
+        border: none;
+        border-top: 1px solid var(--border);
+        margin: 20px 0;
+      }
+      
+      .meta { 
+        display: grid; 
+        grid-template-columns: 1fr 1fr; 
+        gap: 16px; 
+      }
+      
+      .meta-item {
+        padding: 12px;
+        background: linear-gradient(135deg, var(--glow-1), transparent);
+        border-radius: 8px;
+        border: 1px solid var(--border);
+      }
+      
+      .meta-label {
+        font-size: 12px;
+        color: var(--muted);
+        text-transform: uppercase;
+        letter-spacing: 0.5px;
+        margin-bottom: 6px;
+      }
+      
+      .meta-range {
+        font-size: 14px;
+        color: var(--text-dim);
+        font-weight: 500;
+      }
+      
+      .api-docs {
+        margin-top: 20px;
+        padding: 16px;
+        background: linear-gradient(135deg, var(--glow-1), transparent);
+        border-radius: 8px;
+        border: 1px solid var(--border);
+      }
+      
+      .api-docs p {
+        margin: 8px 0;
+        font-size: 13px;
+        line-height: 1.6;
+      }
+      
+      #map {
+        width: 100%;
+        height: 350px;
+        border-radius: 12px;
+        border: 1px solid var(--border);
+      }
+      
+      .location-header {
+        display: flex;
+        justify-content: space-between;
+        align-items: center;
+        margin-bottom: 16px;
+      }
+      
+      .location-info {
+        display: flex;
+        gap: 12px;
+        flex-wrap: wrap;
+        margin-bottom: 16px;
+      }
+      
+      .location-badge {
+        background: linear-gradient(135deg, var(--glow-1), transparent);
+        border: 1px solid var(--border);
+        border-radius: 8px;
+        padding: 8px 12px;
+        font-size: 13px;
+        display: flex;
+        align-items: center;
+        gap: 6px;
+      }
+      
+      .location-badge strong {
+        color: var(--text);
+      }
+      
+      .toast { 
+        position: fixed; 
+        right: 20px; 
+        bottom: 20px; 
+        background: var(--panel); 
+        color: var(--text); 
+        border: 1px solid var(--border); 
+        border-radius: 12px; 
+        padding: 14px 18px; 
+        display: none;
+        box-shadow: 0 8px 24px var(--shadow);
+        animation: slideIn 0.3s ease;
+        z-index: 1000;
+      }
+      
+      @keyframes slideIn {
+        from { transform: translateX(400px); opacity: 0; }
+        to { transform: translateX(0); opacity: 1; }
+      }
+      
+      .spinner {
+        display: inline-block;
+        width: 14px;
+        height: 14px;
+        border: 2px solid var(--border);
+        border-top-color: var(--brand);
+        border-radius: 50%;
+        animation: spin 0.6s linear infinite;
+      }
+      
+      @keyframes spin {
+        to { transform: rotate(360deg); }
+      }
+    </style>
+    <script src="https://cdn.jsdelivr.net/npm/chart.js@4.4.4/dist/chart.umd.min.js"></script>
+    <link rel="stylesheet" href="https://unpkg.com/leaflet@1.9.4/dist/leaflet.css" />
+    <script src="https://unpkg.com/leaflet@1.9.4/dist/leaflet.js"></script>
+    <script type="module" src="https://unpkg.com/@google/model-viewer/dist/model-viewer.min.js"></script>
+  </head>
+  <body>
+    <div class="topbar">
+      <div class="topbar-inner">
+        <div style="display:flex; align-items:center; gap:12px; min-width:0;">
+          <div class="topbar-title"><span class="topbar-logo">G</span> GEOSLOPE Moisture Monitor</div>
+          <div class="subtitle" style="white-space:nowrap; overflow:hidden; text-overflow:ellipsis;">Real-time soil moisture analytics</div>
+        </div>
+        <div class="topbar-actions">
+          <div class="status-badge" title="Last updated">
+            <span class="status-dot"></span>
+            <span id="topbarLastUpdated">Live</span>
+            <span id="lastUpdated" style="display:none">Live</span>
+          </div>
+          <div class="theme-toggle">
+            <button class="theme-btn" id="lightBtn">☀️ Light</button>
+            <button class="theme-btn" id="darkBtn">🌙 Dark</button>
+          </div>
+        </div>
+      </div>
+    </div>
+    <div class="container">
+
+      <div class="grid">
+        <div class="card">
+          <div class="controls">
+            <button id="refreshBtn" class="secondary">🔄 Refresh</button>
+            <button id="toggleLiveBtn">⏸️ Pause</button>
+            <label><input type="checkbox" id="smoothToggle" /> Smooth</label>
+            <label>Range
+              <select id="rangeSelect">
+                <option value="50">50</option>
+                <option value="200" selected>200</option>
+                <option value="500">500</option>
+              </select>
+            </label>
+            <label>Interval
+              <select id="intervalSelect">
+                <option value="2000">2s</option>
+                <option value="3000" selected>3s</option>
+                <option value="5000">5s</option>
+                <option value="10000">10s</option>
+              </select>
+            </label>
+            <button id="downloadBtn" class="secondary">⬇️ CSV</button>
+          </div>
+          
+          <div class="kpis">
+            <div class="kpi">
+              <div class="label">Latest</div>
+              <div class="value ok" id="kpiLatest">--</div>
+            </div>
+            <div class="kpi">
+              <div class="label">Average</div>
+              <div class="value" id="kpiAvg">--</div>
+            </div>
+            <div class="kpi">
+              <div class="label">Minimum</div>
+              <div class="value" id="kpiMin">--</div>
+            </div>
+            <div class="kpi">
+              <div class="label">Maximum</div>
+              <div class="value" id="kpiMax">--</div>
+            </div>
+          </div>
+          
+          <h2>📊 Moisture Trends</h2>
+          <canvas id="moistureChart"></canvas>
+          
+          <div class="footer">
+            <div class="muted">Displaying <strong id="countLabel">0</strong> readings</div>
+            <div class="legend">
+              <div class="legend-item">
+                <span class="legend-dot" style="background: var(--bad)"></span>
+                <span class="muted">Dry</span>
+              </div>
+              <div class="legend-item">
+                <span class="legend-dot" style="background: var(--warn)"></span>
+                <span class="muted">Moist</span>
+              </div>
+              <div class="legend-item">
+                <span class="legend-dot" style="background: var(--good)"></span>
+                <span class="muted">Wet</span>
+              </div>
+            </div>
+          </div>
+        </div>
+        
+        <div class="card">
+          <h2>💧 Current Reading</h2>
+          <div class="detail-value ok" id="latestValue">--</div>
+          <div class="detail-time" id="latestTime">Waiting for data...</div>
+          
+          <hr />
+          
+          <h2 style="font-size: 16px; margin-bottom: 12px;">📖 Moisture Scale</h2>
+          <div class="meta">
+            <div class="meta-item">
+              <div class="meta-label bad">Dry</div>
+              <div class="meta-range">< 200</div>
+            </div>
+            <div class="meta-item">
+              <div class="meta-label warn">Moist</div>
+              <div class="meta-range">200 - 600</div>
+            </div>
+            <div class="meta-item">
+              <div class="meta-label ok">Wet</div>
+              <div class="meta-range">600 - 800</div>
+            </div>
+            <div class="meta-item">
+              <div class="meta-label warn">Saturated</div>
+              <div class="meta-range">> 800</div>
+            </div>
+          </div>
+          
+          <div class="api-docs">
+            <h2 style="font-size: 14px; margin: 0 0 12px 0;">🔌 API Endpoints</h2>
+            <p><strong>POST</strong> <code>/api/moisture</code></p>
+            <p style="margin-left: 12px;">Body: <code>{ "value": Number }</code></p>
+            <p><strong>GET</strong> <code>/api/moisture/latest</code></p>
+            <p><strong>GET</strong> <code>/api/moisture?limit=50</code></p>
+          </div>
+        </div>
+        
+        <div class="two-col grid-full">
+          <div class="card">
+            <div class="location-header">
+              <h2>📍 Sensor Location</h2>
+              <button id="updateLocationBtn" class="secondary" style="padding: 6px 12px; font-size: 13px;">📌 Update Location</button>
+            </div>
+            
+            <div class="location-info">
+              <div class="location-badge">
+                <span>📍</span>
+                <span class="muted">Lat:</span>
+                <strong id="currentLat">--</strong>
+              </div>
+              <div class="location-badge">
+                <span>📍</span>
+                <span class="muted">Lng:</span>
+                <strong id="currentLng">--</strong>
+              </div>
+              <div class="location-badge">
+                <span>📏</span>
+                <span class="muted">Elevation:</span>
+                <strong id="currentElevation">--</strong>
+              </div>
+              <div class="location-badge">
+                <span>🌐</span>
+                <span class="muted">Location:</span>
+                <strong id="currentLocation">Loading...</strong>
+              </div>
+            </div>
+            
+            <div id="map" style="height: 420px;"></div>
+          </div>
+
+          <div class="card">
+            <h2>🧩 Device 3D Models</h2>
+          <div class="controls" style="margin-bottom: 12px;">
+            <label>Model
+              <select id="modelSelect">
+                <option value="">— Select sample —</option>
+                <option value="https://modelviewer.dev/shared-assets/models/Astronaut.glb">Astronaut (sample)</option>
+                <option value="https://modelviewer.dev/shared-assets/models/RobotExpressive.glb">Robot (sample)</option>
+                <option value="https://modelviewer.dev/shared-assets/models/Car.glb">Car (sample)</option>
+              </select>
+            </label>
+            <label>Uploads
+              <select id="uploadSelect">
+                <option value="">— Select from uploads —</option>
+              </select>
+            </label>
+            <input type="file" id="modelUpload" accept=".glb,.gltf" style="display:none;" />
+            <button id="uploadModelBtn" class="secondary">📦 Upload GLB</button>
+            <div id="uploadBar" style="flex:1; min-width: 180px; height: 10px; background: var(--panel); border: 1px solid var(--border); border-radius: 999px; overflow: hidden; display: none;">
+              <div id="uploadBarFill" style="height: 100%; width: 0%; background: linear-gradient(90deg, var(--brand), var(--brand-strong)); transition: width 0.1s;"></div>
+            </div>
+            <label><input type="checkbox" id="autoRotateToggle" checked /> Auto-rotate</label>
+            <label>Light
+              <select id="exposureSelect">
+                <option value="0.8">Low</option>
+                <option value="1.0" selected>Normal</option>
+                <option value="1.3">High</option>
+              </select>
+            </label>
+          </div>
+          <model-viewer id="deviceViewer" style="width: 100%; height: 420px; background: var(--panel); border: 1px solid var(--border); border-radius: 12px;"
+                        camera-controls shadow-intensity="1" touch-action="pan-y" exposure="1.0" autoplay
+                        ar ar-modes="webxr scene-viewer quick-look" auto-rotate></model-viewer>
+          <div class="muted" style="margin-top: 8px; font-size: 13px;">Tip: Use mouse/touch to orbit. Upload your device GLB to preview.</div>
+          </div>
+        </div>
+      </div>
+    </div>
+    
+    <div class="toast" id="toast"></div>
+
+    <script>
+      const apiBase = `${location.origin}`;
+      const deviceId = localStorage.getItem('deviceId') || 'default-device';
+      const MODEL_KEY = 'deviceModelUrl';
+      
+      // Default location and map setup
+      let sensorLocation = {
+        lat: 14.8283,
+        lng: 120.2824,
+        name: 'Olongapo, Central Luzon, PH'
+      };
+      
+      let map, marker, tileLayer;
+      
+      // Initialize map when Leaflet is loaded
+      async function initMap() {
+        // Load saved location from storage
+        const savedLocation = localStorage.getItem('sensorLocation');
+        if (savedLocation) {
+          try {
+            sensorLocation = JSON.parse(savedLocation);
+          } catch (e) {
+            console.error('Error parsing saved location');
+          }
+        }
+
+        // Try to load device location from backend
+        try {
+          const res = await fetch(`${apiBase}/api/device/${encodeURIComponent(deviceId)}/location`);
+          if (res.ok) {
+            const loc = await res.json();
+            if (typeof loc.lat === 'number' && typeof loc.lng === 'number') {
+              sensorLocation.lat = loc.lat;
+              sensorLocation.lng = loc.lng;
+              if (loc.name) sensorLocation.name = loc.name;
+              localStorage.setItem('sensorLocation', JSON.stringify(sensorLocation));
+            }
+          }
+        } catch (e) {
+          // ignore; fallback to stored/default
+        }
+        
+        // Initialize map
+        map = L.map('map').setView([sensorLocation.lat, sensorLocation.lng], 13);
+        
+        // Add tile layer with theme support
+        tileLayer = L.tileLayer('https://{s}.tile.openstreetmap.org/{z}/{x}/{y}.png', {
+          attribution: '© OpenStreetMap contributors',
+          maxZoom: 19
+        }).addTo(map);
+        
+        // Custom marker icon
+        const markerIcon = L.divIcon({
+          className: 'custom-marker',
+          html: '<div style="background: linear-gradient(135deg, #60a5fa, #2563eb); width: 30px; height: 30px; border-radius: 50% 50% 50% 0; transform: rotate(-45deg); border: 3px solid white; box-shadow: 0 4px 12px rgba(0,0,0,0.3);"><div style="width: 10px; height: 10px; background: white; border-radius: 50%; position: absolute; top: 50%; left: 50%; transform: translate(-50%, -50%);"></div></div>',
+          iconSize: [30, 30],
+          iconAnchor: [15, 30]
+        });
+        
+        marker = L.marker([sensorLocation.lat, sensorLocation.lng], { 
+          icon: markerIcon,
+          draggable: true 
+        }).addTo(map);
+        
+        marker.bindPopup(`<b>Moisture Sensor</b><br>${sensorLocation.name}`).openPopup();
+        
+        // Handle marker drag
+        marker.on('dragend', function(e) {
+          const pos = marker.getLatLng();
+          sensorLocation.lat = pos.lat;
+          sensorLocation.lng = pos.lng;
+          
+          // Reverse geocode to get location name
+          fetch(`https://nominatim.openstreetmap.org/reverse?format=json&lat=${pos.lat}&lon=${pos.lng}`)
+            .then(r => r.json())
+            .then(data => {
+              sensorLocation.name = data.display_name || `${pos.lat.toFixed(4)}, ${pos.lng.toFixed(4)}`;
+              localStorage.setItem('sensorLocation', JSON.stringify(sensorLocation));
+              marker.setPopupContent(`<b>Moisture Sensor</b><br>${sensorLocation.name}`);
+              updateLocationDisplay();
+              // Persist to backend
+              fetch(`${apiBase}/api/device/${encodeURIComponent(deviceId)}/location`, {
+                method: 'POST',
+                headers: { 'Content-Type': 'application/json' },
+                body: JSON.stringify({ lat: sensorLocation.lat, lng: sensorLocation.lng, name: sensorLocation.name })
+              }).catch(() => {});
+              toast('Location updated!');
+            })
+            .catch(() => {
+              sensorLocation.name = `${pos.lat.toFixed(4)}, ${pos.lng.toFixed(4)}`;
+              localStorage.setItem('sensorLocation', JSON.stringify(sensorLocation));
+              updateLocationDisplay();
+              fetch(`${apiBase}/api/device/${encodeURIComponent(deviceId)}/location`, {
+                method: 'POST',
+                headers: { 'Content-Type': 'application/json' },
+                body: JSON.stringify({ lat: sensorLocation.lat, lng: sensorLocation.lng, name: sensorLocation.name })
+              }).catch(() => {});
+              toast('Location updated!');
+            });
+        });
+        
+        updateLocationDisplay();
+        updateMapTheme();
+      }
+      
+      // Update location display
+      function updateLocationDisplay() {
+        document.getElementById('currentLat').textContent = sensorLocation.lat.toFixed(6);
+        document.getElementById('currentLng').textContent = sensorLocation.lng.toFixed(6);
+        document.getElementById('currentLocation').textContent = sensorLocation.name;
+        
+        // Fetch elevation
+        fetch(`https://api.open-elevation.com/api/v1/lookup?locations=${sensorLocation.lat},${sensorLocation.lng}`)
+          .then(r => r.json())
+          .then(data => {
+            if (data.results && data.results[0]) {
+              document.getElementById('currentElevation').textContent = `${data.results[0].elevation}m`;
+            }
+          })
+          .catch(() => {
+            document.getElementById('currentElevation').textContent = 'N/A';
+          });
+      }
+      
+      // Update location button
+      document.getElementById('updateLocationBtn').addEventListener('click', () => {
+        if (navigator.geolocation) {
+          toast('Getting your location...');
+          navigator.geolocation.getCurrentPosition(
+            (position) => {
+              const lat = position.coords.latitude;
+              const lng = position.coords.longitude;
+              sensorLocation.lat = lat;
+              sensorLocation.lng = lng;
+              
+              map.setView([lat, lng], 13);
+              marker.setLatLng([lat, lng]);
+              
+              // Reverse geocode
+              fetch(`https://nominatim.openstreetmap.org/reverse?format=json&lat=${lat}&lon=${lng}`)
+                .then(r => r.json())
+                .then(data => {
+                  sensorLocation.name = data.display_name || `${lat.toFixed(4)}, ${lng.toFixed(4)}`;
+                  localStorage.setItem('sensorLocation', JSON.stringify(sensorLocation));
+                  marker.setPopupContent(`<b>Moisture Sensor</b><br>${sensorLocation.name}`).openPopup();
+                  updateLocationDisplay();
+                  fetch(`${apiBase}/api/device/${encodeURIComponent(deviceId)}/location`, {
+                    method: 'POST',
+                    headers: { 'Content-Type': 'application/json' },
+                    body: JSON.stringify({ lat, lng, name: sensorLocation.name })
+                  }).catch(() => {});
+                  toast('Location updated to current position!');
+                })
+                .catch(() => {
+                  sensorLocation.name = `${lat.toFixed(4)}, ${lng.toFixed(4)}`;
+                  localStorage.setItem('sensorLocation', JSON.stringify(sensorLocation));
+                  updateLocationDisplay();
+                  fetch(`${apiBase}/api/device/${encodeURIComponent(deviceId)}/location`, {
+                    method: 'POST',
+                    headers: { 'Content-Type': 'application/json' },
+                    body: JSON.stringify({ lat, lng, name: sensorLocation.name })
+                  }).catch(() => {});
+                  toast('Location updated!');
+                });
+            },
+            (error) => {
+              toast('Unable to get your location. Drag the marker to set location.');
+            }
+          );
+        } else {
+          toast('Geolocation is not supported. Drag the marker to set location.');
+        }
+      });
+      
+      // Update map theme when switching themes
+      function updateMapTheme() {
+        if (!map || !tileLayer) return;
+        
+        const theme = html.getAttribute('data-theme');
+        map.removeLayer(tileLayer);
+        
+        if (theme === 'dark') {
+          tileLayer = L.tileLayer('https://{s}.basemaps.cartocdn.com/dark_all/{z}/{x}/{y}{r}.png', {
+            attribution: '© OpenStreetMap contributors, © CARTO',
+            maxZoom: 19
+          }).addTo(map);
+        } else {
+          tileLayer = L.tileLayer('https://{s}.tile.openstreetmap.org/{z}/{x}/{y}.png', {
+            attribution: '© OpenStreetMap contributors',
+            maxZoom: 19
+          }).addTo(map);
+        }
+      }
+      
+      // Theme handling
+      const html = document.documentElement;
+      const savedTheme = localStorage.getItem('theme') || 'dark';
+      html.setAttribute('data-theme', savedTheme);
+      
+      function updateThemeButtons(theme) {
+        document.getElementById('lightBtn').classList.toggle('active', theme === 'light');
+        document.getElementById('darkBtn').classList.toggle('active', theme === 'dark');
+      }
+      
+      updateThemeButtons(savedTheme);
+      
+      document.getElementById('lightBtn').addEventListener('click', () => {
+        html.setAttribute('data-theme', 'light');
+        localStorage.setItem('theme', 'light');
+        updateThemeButtons('light');
+        updateChartTheme();
+        updateMapTheme();
+      });
+      
+      document.getElementById('darkBtn').addEventListener('click', () => {
+        html.setAttribute('data-theme', 'dark');
+        localStorage.setItem('theme', 'dark');
+        updateThemeButtons('dark');
+        updateChartTheme();
+        updateMapTheme();
+      });
+      
+      // Initialize map theme
+      setTimeout(initMap, 100);
+
+      const ctx = document.getElementById('moistureChart');
+      const gradient = (() => {
+        const g = ctx.getContext('2d').createLinearGradient(0, 0, 0, 400);
+        g.addColorStop(0, 'rgba(96,165,250,0.45)');
+        g.addColorStop(1, 'rgba(37,99,235,0.02)');
+        return g;
+      })();
+      
+      const chart = new Chart(ctx, {
+        type: 'line',
+        data: {
+          labels: [],
+          datasets: [{
+            label: 'Moisture Level',
+            data: [],
+            fill: true,
+            borderColor: '#60a5fa',
+            backgroundColor: gradient,
+            pointRadius: 0,
+            tension: 0.4,
+            borderWidth: 2
+          }]
+        },
+        options: {
+          responsive: true,
+          maintainAspectRatio: false,
+          interaction: {
+            intersect: false,
+            mode: 'index'
+          },
+          scales: {
+            x: { 
+              ticks: { color: '#9ca3af', maxRotation: 0, autoSkip: true }, 
+              grid: { color: getComputedStyle(document.documentElement).getPropertyValue('--chart-grid') } 
+            },
+            y: { 
+              beginAtZero: true, 
+              suggestedMax: 1023, 
+              ticks: { color: '#9ca3af' }, 
+              grid: { color: getComputedStyle(document.documentElement).getPropertyValue('--chart-grid') } 
+            }
+          },
+          plugins: { 
+            legend: { display: false },
+            tooltip: {
+              backgroundColor: 'rgba(17, 24, 39, 0.95)',
+              titleColor: '#e5e7eb',
+              bodyColor: '#cbd5e1',
+              borderColor: '#374151',
+              borderWidth: 1,
+              padding: 12,
+              displayColors: false
+            }
+          }
+        }
+      });
+      
+      function updateChartTheme() {
+        const theme = html.getAttribute('data-theme');
+        const gridColor = getComputedStyle(document.documentElement).getPropertyValue('--chart-grid');
+        chart.options.scales.x.grid.color = gridColor;
+        chart.options.scales.y.grid.color = gridColor;
+        chart.update();
+      }
+
+      function classify(value) {
+        if (value < 200) return 'bad';
+        if (value < 400) return 'warn';
+        if (value < 800) return 'ok';
+        return 'warn';
+      }
+
+      function fmt(ts) {
+        const d = new Date(ts);
+        return d.toLocaleString();
+      }
+
+      function toast(msg) {
+        const t = document.getElementById('toast');
+        t.textContent = msg;
+        t.style.display = 'block';
+        setTimeout(() => { t.style.display = 'none'; }, 3000);
+      }
+
+      function movingAverage(arr, window = 5) {
+        if (!arr.length || window <= 1) return arr;
+        const out = [];
+        let sum = 0;
+        for (let i = 0; i < arr.length; i++) {
+          sum += arr[i];
+          if (i >= window) sum -= arr[i - window];
+          out.push(i >= window - 1 ? Math.round(sum / window) : arr[i]);
+        }
+        return out;
+      }
+
+      function computeStats(values) {
+        if (!values.length) return { avg: '--', min: '--', max: '--' };
+        let min = Infinity, max = -Infinity, sum = 0;
+        for (const v of values) { 
+          if (v < min) min = v; 
+          if (v > max) max = v; 
+          sum += v; 
+        }
+        const avg = Math.round(sum / values.length);
+        return { avg, min, max };
+      }
+
+      async function fetchHistory(limit = 200) {
+        try {
+          const res = await fetch(`${apiBase}/api/moisture?limit=${limit}&deviceId=${encodeURIComponent(deviceId)}`);
+          if (!res.ok) throw new Error('Failed to load history');
+          const data = await res.json();
+          data.reverse();
+          const labels = data.map(d => fmt(d.createdAt || d.updatedAt));
+          let values = data.map(d => d.value);
+          if (document.getElementById('smoothToggle').checked) values = movingAverage(values, 5);
+          chart.data.labels = labels;
+          chart.data.datasets[0].data = values;
+          chart.update();
+          document.getElementById('countLabel').textContent = values.length;
+          if (data.length) updateLatest(data[data.length - 1]);
+          const { avg, min, max } = computeStats(values);
+          document.getElementById('kpiAvg').textContent = avg;
+          document.getElementById('kpiAvg').className = `value ${classify(avg)}`;
+          document.getElementById('kpiMin').textContent = min;
+          document.getElementById('kpiMin').className = `value ${classify(min)}`;
+          document.getElementById('kpiMax').textContent = max;
+          document.getElementById('kpiMax').className = `value ${classify(max)}`;
+          const t = new Date().toLocaleTimeString();
+          document.getElementById('lastUpdated').textContent = t;
+          const topEl = document.getElementById('topbarLastUpdated');
+          if (topEl) topEl.textContent = t;
+        } catch (e) {
+          toast(e.message);
+        }
+      }
+
+      function updateLatest(doc) {
+        if (!doc) return;
+        const el = document.getElementById('latestValue');
+        el.textContent = doc.value;
+        el.className = `detail-value ${classify(doc.value)}`;
+        document.getElementById('latestTime').textContent = fmt(doc.createdAt || doc.updatedAt);
+        document.getElementById('kpiLatest').textContent = doc.value;
+        document.getElementById('kpiLatest').className = `value ${classify(doc.value)}`;
+      }
+
+      async function fetchLatestAndAppend() {
+        try {
+          const res = await fetch(`${apiBase}/api/moisture/latest?deviceId=${encodeURIComponent(deviceId)}`);
+          if (!res.ok) return;
+          const doc = await res.json();
+          if (!doc || !doc.createdAt) return;
+          const labels = chart.data.labels;
+          const data = chart.data.datasets[0].data;
+          const lastLabel = labels.length ? labels[labels.length - 1] : null;
+          const label = fmt(doc.createdAt);
+          if (label !== lastLabel) {
+            labels.push(label);
+            data.push(doc.value);
+            if (labels.length > 400) { labels.shift(); data.shift(); }
+            chart.update();
+            document.getElementById('countLabel').textContent = data.length;
+            const stats = computeStats(data);
+            document.getElementById('kpiAvg').textContent = stats.avg;
+            document.getElementById('kpiAvg').className = `value ${classify(stats.avg)}`;
+            document.getElementById('kpiMin').textContent = stats.min;
+            document.getElementById('kpiMin').className = `value ${classify(stats.min)}`;
+            document.getElementById('kpiMax').textContent = stats.max;
+            document.getElementById('kpiMax').className = `value ${classify(stats.max)}`;
+          }
+          updateLatest(doc);
+          const t2 = new Date().toLocaleTimeString();
+          document.getElementById('lastUpdated').textContent = t2;
+          const topEl2 = document.getElementById('topbarLastUpdated');
+          if (topEl2) topEl2.textContent = t2;
+        } catch (e) {
+          console.error('Error fetching latest:', e);
+        }
+      }
+
+      let live = true;
+      let timer = null;
+      let intervalMs = 3000;
+      
+      function startLive() {
+        if (timer) return;
+        timer = setInterval(fetchLatestAndAppend, intervalMs);
+      }
+      
+      function stopLive() {
+        if (!timer) return;
+        clearInterval(timer);
+        timer = null;
+      }
+
+      function downloadCSV() {
+        const labels = chart.data.labels;
+        const values = chart.data.datasets[0].data;
+        if (!labels.length) { toast('No data to download'); return; }
+        let csv = 'timestamp,value\n';
+        for (let i = 0; i < labels.length; i++) {
+          csv += `${labels[i]},${values[i]}\n`;
+        }
+        const blob = new Blob([csv], { type: 'text/csv;charset=utf-8;' });
+        const url = URL.createObjectURL(blob);
+        const a = document.createElement('a');
+        a.href = url; 
+        a.download = `moisture_readings_${Date.now()}.csv`; 
+        a.click();
+        URL.revokeObjectURL(url);
+        toast('CSV downloaded successfully!');
+      }
+
+      document.getElementById('refreshBtn').addEventListener('click', () => {
+        fetchHistory(Number(document.getElementById('rangeSelect').value));
+      });
+      
+      document.getElementById('toggleLiveBtn').addEventListener('click', (e) => {
+        live = !live;
+        e.target.textContent = live ? '⏸️ Pause' : '▶️ Resume';
+        if (live) startLive(); else stopLive();
+      });
+      
+      document.getElementById('smoothToggle').addEventListener('change', () => {
+        fetchHistory(Number(document.getElementById('rangeSelect').value));
+      });
+      
+      document.getElementById('rangeSelect').addEventListener('change', (e) => {
+        fetchHistory(Number(e.target.value));
+      });
+      
+      document.getElementById('intervalSelect').addEventListener('change', (e) => {
+        intervalMs = Number(e.target.value) || 3000;
+        if (live) { stopLive(); startLive(); }
+      });
+      
+      document.getElementById('downloadBtn').addEventListener('click', downloadCSV);
+
+      // 3D Model Viewer logic
+      const viewer = document.getElementById('deviceViewer');
+      const modelSelect = document.getElementById('modelSelect');
+      const uploadSelect = document.getElementById('uploadSelect');
+      const modelUpload = document.getElementById('modelUpload');
+      const uploadModelBtn = document.getElementById('uploadModelBtn');
+      const uploadBar = document.getElementById('uploadBar');
+      const uploadBarFill = document.getElementById('uploadBarFill');
+      const autoRotateToggle = document.getElementById('autoRotateToggle');
+      const exposureSelect = document.getElementById('exposureSelect');
+
+      // Load last model from API (fallback to storage)
+      (async function initModelViewer() {
+        const savedUrl = localStorage.getItem(MODEL_KEY);
+        try {
+          const res = await fetch(`${apiBase}/api/device/${encodeURIComponent(deviceId)}/model`);
+          if (res.ok) {
+            const mdl = await res.json();
+            if (mdl && mdl.modelUrl) {
+              viewer.setAttribute('src', mdl.modelUrl);
+              localStorage.setItem(MODEL_KEY, mdl.modelUrl);
+            } else if (savedUrl) {
+              viewer.setAttribute('src', savedUrl);
+            }
+          } else if (savedUrl) {
+            viewer.setAttribute('src', savedUrl);
+          }
+        } catch (e) {
+          if (savedUrl) viewer.setAttribute('src', savedUrl);
+        }
+        // Populate uploads list
+        try {
+          const list = await fetch(`${apiBase}/api/uploads`).then(r => r.json());
+          if (Array.isArray(list)) {
+            for (const f of list) {
+              const opt = document.createElement('option');
+              opt.value = f.url;
+              opt.textContent = f.displayName || f.name;
+              uploadSelect.appendChild(opt);
+            }
+          }
+        } catch (e) {}
+        autoRotateToggle.addEventListener('change', () => {
+          if (autoRotateToggle.checked) viewer.setAttribute('auto-rotate', ''); else viewer.removeAttribute('auto-rotate');
+        });
+        exposureSelect.addEventListener('change', (e) => {
+          viewer.setAttribute('exposure', String(e.target.value));
+        });
+      })();
+
+      modelSelect.addEventListener('change', (e) => {
+        const url = e.target.value;
+        if (!url) return;
+        viewer.setAttribute('src', url);
+        localStorage.setItem(MODEL_KEY, url);
+        fetch(`${apiBase}/api/device/${encodeURIComponent(deviceId)}/model`, {
+          method: 'POST',
+          headers: { 'Content-Type': 'application/json' },
+          body: JSON.stringify({ modelUrl: url, modelName: modelSelect.options[modelSelect.selectedIndex]?.text || 'Sample model' })
+        }).catch(() => {});
+        toast('Loaded sample model');
+      });
+
+      uploadSelect.addEventListener('change', (e) => {
+        const url = e.target.value;
+        if (!url) return;
+        viewer.setAttribute('src', url);
+        localStorage.setItem(MODEL_KEY, url);
+        fetch(`${apiBase}/api/device/${encodeURIComponent(deviceId)}/model`, {
+          method: 'POST',
+          headers: { 'Content-Type': 'application/json' },
+          body: JSON.stringify({ modelUrl: url, modelName: uploadSelect.options[uploadSelect.selectedIndex]?.text || 'Uploaded model' })
+        }).catch(() => {});
+        toast('Loaded uploaded model');
+      });
+
+      uploadModelBtn.addEventListener('click', () => modelUpload.click());
+      modelUpload.addEventListener('change', async (e) => {
+        const file = e.target.files && e.target.files[0];
+        if (!file) return;
+        // Show progress UI
+        uploadBar.style.display = 'block';
+        uploadBarFill.style.width = '0%';
+        uploadModelBtn.disabled = true;
+        uploadModelBtn.textContent = 'Uploading…';
+        try {
+          const form = new FormData();
+          form.append('file', file);
+          const xhr = new XMLHttpRequest();
+          const urlEndpoint = `${apiBase}/api/uploads`;
+          const done = await new Promise((resolve, reject) => {
+            xhr.upload.addEventListener('progress', (evt) => {
+              if (evt.lengthComputable) {
+                const pct = Math.min(100, Math.max(0, Math.round((evt.loaded / evt.total) * 100)));
+                uploadBarFill.style.width = pct + '%';
+              }
+            });
+            xhr.onreadystatechange = () => {
+              if (xhr.readyState === 4) {
+                if (xhr.status >= 200 && xhr.status < 300) resolve(xhr.responseText);
+                else reject(new Error('Upload failed'));
+              }
+            };
+            xhr.open('POST', urlEndpoint, true);
+            xhr.send(form);
+          });
+          const info = JSON.parse(done || '{}');
+          if (!info || !info.url) throw new Error('Invalid upload response');
+          const url = info.url;
+          uploadBarFill.style.width = '100%';
+          // Update uploads list
+          const opt = document.createElement('option');
+          opt.value = url;
+          opt.textContent = info.displayName || info.name;
+          uploadSelect.appendChild(opt);
+          uploadSelect.value = url;
+          // Set viewer and persist per device
+          viewer.setAttribute('src', url);
+          localStorage.setItem(MODEL_KEY, url);
+          await fetch(`${apiBase}/api/device/${encodeURIComponent(deviceId)}/model`, {
+            method: 'POST',
+            headers: { 'Content-Type': 'application/json' },
+            body: JSON.stringify({ modelUrl: url, modelName: info.displayName || info.name })
+          }).catch(() => {});
+          toast('Model uploaded and selected');
+        } catch (err) {
+          toast(err.message || 'Upload failed');
+        } finally {
+          setTimeout(() => {
+            uploadBar.style.display = 'none';
+            uploadBarFill.style.width = '0%';
+            uploadModelBtn.disabled = false;
+            uploadModelBtn.textContent = '📦 Upload GLB';
+          }, 400);
+        }
+      });
+
+      // Initial load
+      fetchHistory().catch(e => toast(e.message));
+      startLive();
+    </script>
+  </body>
+</html>
