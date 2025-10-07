@@ -12,6 +12,26 @@ const PORT = process.env.PORT || 3000;
 
 app.use(cors());
 app.use(bodyParser.json());
+// Simple API call logger
+app.use((req, res, next) => {
+  const start = Date.now();
+  const { method, url } = req;
+  const q = Object.keys(req.query || {}).length ? ` query=${JSON.stringify(req.query)}` : '';
+  if (url.startsWith('/api/')) {
+    console.log(`[API] → ${method} ${url}${q}`);
+    if (method !== 'GET' && req.is('application/json')) {
+      // Avoid logging large binary bodies like uploads
+      const bodyPreview = url.startsWith('/api/uploads') ? '{file: <binary>}' : JSON.stringify(req.body);
+      console.log(`[API]    body=${bodyPreview}`);
+    }
+  }
+  res.on('finish', () => {
+    if (url.startsWith('/api/')) {
+      console.log(`[API] ← ${method} ${url} ${res.statusCode} ${Date.now() - start}ms`);
+    }
+  });
+  next();
+});
 
 // Ensure uploads directory exists and serve it statically
 const uploadsDir = path.join(__dirname, 'uploads');
@@ -47,16 +67,34 @@ app.get('/', (req, res) => {
 
 app.post('/api/moisture', async (req, res) => {
   try {
-    const { value, source, deviceId = 'default-device', lat, lng } = req.body || {};
+    const { value, source, deviceId = 'default-device', lat, lng, humidity, temperature, tilt } = req.body || {};
     if (typeof value !== 'number') {
       return res.status(400).json({ error: 'value (number) is required' });
     }
     const hasLat = typeof lat === 'number';
     const hasLng = typeof lng === 'number';
-    const saved = await saveMoisture(value, source, deviceId, hasLat ? lat : undefined, hasLng ? lng : undefined);
+    const saved = await saveMoisture(
+      value,
+      source,
+      deviceId,
+      hasLat ? lat : undefined,
+      hasLng ? lng : undefined,
+      typeof humidity === 'number' ? humidity : undefined,
+      typeof temperature === 'number' ? temperature : undefined,
+      typeof tilt === 'number' ? tilt : undefined
+    );
+    console.log('[API] saved reading', {
+      id: saved && saved._id ? String(saved._id) : undefined,
+      deviceId,
+      value,
+      humidity,
+      temperature,
+      tilt,
+      createdAt: saved && saved.createdAt ? saved.createdAt : undefined
+    });
     res.status(201).json(saved);
   } catch (err) {
-    console.error(err);
+    console.error('[API] /api/moisture error:', err && err.message ? err.message : err);
     res.status(500).json({ error: 'Failed to save moisture reading' });
   }
 });
@@ -65,9 +103,10 @@ app.get('/api/moisture/latest', async (req, res) => {
   try {
     const { deviceId } = req.query;
     const doc = await getLatestMoisture(deviceId);
+    console.log('[API] latest', { deviceId, value: doc && doc.value, createdAt: doc && doc.createdAt });
     res.json(doc || {});
   } catch (err) {
-    console.error(err);
+    console.error('[API] /api/moisture/latest error:', err && err.message ? err.message : err);
     res.status(500).json({ error: 'Failed to get latest reading' });
   }
 });
@@ -76,9 +115,10 @@ app.get('/api/moisture', async (req, res) => {
   try {
     const { limit, deviceId } = req.query;
     const docs = await getMoistureReadings(limit, deviceId);
+    console.log('[API] history', { deviceId, limit, count: Array.isArray(docs) ? docs.length : 0 });
     res.json(docs);
   } catch (err) {
-    console.error(err);
+    console.error('[API] /api/moisture error:', err && err.message ? err.message : err);
     res.status(500).json({ error: 'Failed to get readings' });
   }
 });

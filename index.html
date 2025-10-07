@@ -589,6 +589,18 @@
               <div class="label">Maximum</div>
               <div class="value" id="kpiMax">--</div>
             </div>
+            <div class="kpi">
+              <div class="label">Humidity (%)</div>
+              <div class="value" id="kpiHumidity">--</div>
+            </div>
+            <div class="kpi">
+              <div class="label">Temperature (°C)</div>
+              <div class="value" id="kpiTemp">--</div>
+            </div>
+            <div class="kpi">
+              <div class="label">Tilt (°)</div>
+              <div class="value" id="kpiTilt">--</div>
+            </div>
           </div>
           
           <h2>📊 Moisture Trends</h2>
@@ -617,6 +629,20 @@
           <h2>💧 Current Reading</h2>
           <div class="detail-value ok" id="latestValue">--</div>
           <div class="detail-time" id="latestTime">Waiting for data...</div>
+          <div class="meta" style="margin-top: 8px;">
+            <div class="meta-item">
+              <div class="meta-label">Humidity</div>
+              <div><strong id="latestHumidity">--</strong> %</div>
+            </div>
+            <div class="meta-item">
+              <div class="meta-label">Temperature</div>
+              <div><strong id="latestTemp">--</strong> °C</div>
+            </div>
+            <div class="meta-item">
+              <div class="meta-label">Tilt</div>
+              <div><strong id="latestTilt">--</strong> °</div>
+            </div>
+          </div>
           
           <hr />
           
@@ -1094,6 +1120,16 @@
         document.getElementById('latestTime').textContent = fmt(doc.createdAt || doc.updatedAt);
         document.getElementById('kpiLatest').textContent = doc.value;
         document.getElementById('kpiLatest').className = `value ${classify(doc.value)}`;
+        // Update aux fields when present
+        const humidity = typeof doc.humidity === 'number' ? Math.round(doc.humidity) : '--';
+        const temperature = typeof doc.temperature === 'number' ? Math.round(doc.temperature) : '--';
+        const tilt = typeof doc.tilt === 'number' ? Math.round(doc.tilt) : '--';
+        document.getElementById('latestHumidity').textContent = humidity;
+        document.getElementById('latestTemp').textContent = temperature;
+        document.getElementById('latestTilt').textContent = tilt;
+        document.getElementById('kpiHumidity').textContent = humidity;
+        document.getElementById('kpiTemp').textContent = temperature;
+        document.getElementById('kpiTilt').textContent = tilt;
       }
 
       async function fetchLatestAndAppend() {

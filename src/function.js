@@ -1,12 +1,16 @@
 const { Schema, model } = require('mongoose');
 const { connectToDatabase } = require('./database');
 
-// Moisture readings now include deviceId and optional location
+// Moisture readings now include deviceId and optional location + sensor extras
 const MoistureReadingSchema = new Schema(
   {
     value: { type: Number, required: true },
     source: { type: String, default: 'arduino' },
     deviceId: { type: String, required: true, index: true },
+    // Optional auxiliary sensor fields
+    humidity: { type: Number },
+    temperature: { type: Number },
+    tilt: { type: Number },
     lat: { type: Number },
     lng: { type: Number }
   },
@@ -30,9 +34,9 @@ const DeviceSchema = new Schema(
 
 const Device = model('Device', DeviceSchema);
 
-async function saveMoisture(value, source = 'arduino', deviceId = 'default-device', lat, lng) {
+async function saveMoisture(value, source = 'arduino', deviceId = 'default-device', lat, lng, humidity, temperature, tilt) {
   await connectToDatabase();
-  const reading = new MoistureReading({ value, source, deviceId, lat, lng });
+  const reading = new MoistureReading({ value, source, deviceId, lat, lng, humidity, temperature, tilt });
   // If a reading includes location, update the device's last known location
   if (typeof lat === 'number' && typeof lng === 'number') {
     await Device.findOneAndUpdate(
